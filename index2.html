@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tower of Hanoi</title>
+<style>
+  :root{
+    --wood-dark:#3b2a1e;
+    --wood:#5c4130;
+    --wood-light:#7a5a41;
+    --parchment:#f2e6d3;
+    --ink:#2a2016;
+    --accent:#d98e3f;
+    --good:#4f9e6e;
+    color-scheme: dark;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-sizing: border-box;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    height:100%;
+    margin:0;
+    background: radial-gradient(ellipse at top, #2f2318, #16110b 70%);
+    color: var(--parchment);
+    font-family: "Georgia", "Iowan Old Style", serif;
+    -webkit-tap-highlight-color: transparent;
+    overflow-x:hidden;
+  }
+  .wrap{
+    min-height:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding: clamp(10px,3vw,24px) clamp(8px,4vw,24px) 20px;
+    gap: clamp(8px,2vh,18px);
+  }
+  h1{
+    font-size: clamp(1.3rem, 5vw, 2rem);
+    letter-spacing:.02em;
+    margin: 4px 0 0;
+    font-weight:600;
+  }
+  .sub{
+    font-size: clamp(.75rem, 2.6vw, .95rem);
+    color:#c9b79a;
+    margin:0;
+    text-align:center;
+    max-width:40ch;
+  }
+  .bar{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    align-items:center;
+    gap: clamp(6px,2vw,14px);
+    font-size: clamp(.8rem,2.6vw,1rem);
+  }
+  .stat{
+    background: rgba(0,0,0,.28);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 10px;
+    padding: 6px 14px;
+    min-width: 84px;
+    text-align:center;
+  }
+  .stat b{display:block; font-size:1.15em; color:var(--accent);}
+  select, button{
+    font-family: inherit;
+    font-size: clamp(.8rem,2.6vw,.95rem);
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,.15);
+    padding: 8px 14px;
+    background: var(--wood);
+    color: var(--parchment);
+    cursor:pointer;
+  }
+  button:active{ transform: translateY(1px); }
+  button.primary{ background: var(--accent); color:#241705; font-weight:700; border-color: transparent; }
+
+  .board{
+    width:100%;
+    max-width: 640px;
+    aspect-ratio: 16/10;
+    max-height: 52vh;
+    background:
+      linear-gradient(180deg, transparent 0 82%, var(--wood-dark) 82% 100%);
+    border-radius: 14px;
+    position:relative;
+    display:flex;
+    justify-content:space-around;
+    align-items:flex-end;
+    padding: 0 1%;
+    gap: 1px;
+    touch-action: manipulation;
+  }
+  .peg{
+    position:relative;
+    flex:1;
+    height:100%;
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-end;
+    align-items:center;
+    padding-bottom: 18%;
+    cursor:pointer;
+  }
+  .peg::before{
+    content:"";
+    position:absolute;
+    bottom:18%;
+    width:10px;
+    height:74%;
+    background: linear-gradient(90deg, var(--wood-light), var(--wood));
+    border-radius: 4px 4px 0 0;
+    box-shadow: 0 0 0 1px rgba(0,0,0,.3);
+  }
+  .peg.selected::before{
+    background: linear-gradient(90deg, var(--accent), #a9631c);
+  }
+  .peg-label{
+    position:absolute;
+    bottom:4%;
+    font-size: clamp(.65rem,2.2vw,.85rem);
+    color:#c9b79a;
+    letter-spacing:.05em;
+  }
+  .disk{
+    height: var(--disk-h, 20px);
+    border-radius: 999px;
+    box-shadow: inset 0 -3px 6px rgba(0,0,0,.25), 0 2px 3px rgba(0,0,0,.4);
+    margin-bottom: var(--disk-gap, 3px);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size: clamp(.55rem,1.8vw,.7rem);
+    color:#241705;
+    font-weight:700;
+    transition: transform .12s ease;
+    z-index:2;
+  }
+  .win{
+    position:fixed;
+    inset:0;
+    background: rgba(10,7,4,.82);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    z-index:10;
+  }
+  .win.show{ display:flex; }
+  .card{
+    background: var(--wood-dark);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 16px;
+    padding: clamp(20px,5vw,32px);
+    text-align:center;
+    max-width: 360px;
+  }
+  .card h2{ margin-top:0; color: var(--good); }
+  .win-actions{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:8px;
+    margin-top:14px;
+  }
+  .hint{ font-size:.8rem; color:#c9b79a; margin-top:6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Tower of Hanoi</h1>
+  <p class="sub">Move every disk to the last peg. Only smaller disks may sit on larger ones.</p>
+
+  <div class="bar">
+    <label class="stat">Disks
+      <select id="diskCount"></select>
+    </label>
+    <div class="stat">Moves<b id="moveCount">0</b></div>
+    <div class="stat">Pegs<b id="pegCount">3</b></div>
+    <button id="resetBtn">Restart</button>
+  </div>
+
+  <div class="board" id="board"></div>
+  <p class="hint" id="tapHint">Tap a peg to pick up its top disk, tap another peg to drop it.</p>
+</div>
+
+<div class="win" id="winScreen">
+  <div class="card" id="winCard">
+    <h2>Solved!</h2>
+    <p id="winText"></p>
+    <div class="win-actions">
+      <button id="exitBtn">Exit</button>
+      <button id="playAgain">Play again</button>
+      <button class="primary" id="nextLevelBtn">Next level</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const board = document.getElementById('board');
+  const diskCountSel = document.getElementById('diskCount');
+  const moveCountEl = document.getElementById('moveCount');
+  const pegCountEl = document.getElementById('pegCount');
+  const winScreen = document.getElementById('winScreen');
+  const winText = document.getElementById('winText');
+
+  for(let n=3;n<=8;n++){
+    const o=document.createElement('option');
+    o.value=n; o.textContent=n+' disks ('+n+' pegs)';
+    if(n===3) o.selected=true;
+    diskCountSel.appendChild(o);
+  }
+
+  const diskColors = ['#e07a5f','#f2cc8f','#81b29a','#3d5a80','#c9a0dc','#e5989b','#8ecae6','#bc6c25'];
+
+  let pegs, selected, moves, numDisks;
+
+  function init(){
+    numDisks = parseInt(diskCountSel.value,10);
+    pegs = [Array.from({length:numDisks},(_,i)=>numDisks-i)];
+    for(let p=1; p<numDisks; p++) pegs.push([]);
+    selected = null;
+    moves = 0;
+    moveCountEl.textContent = 0;
+    pegCountEl.textContent = numDisks;
+    winScreen.classList.remove('show');
+    render();
+  }
+
+  function sizeDisksToStack(){
+    const boardH = board.getBoundingClientRect().height;
+    const poleH = boardH * 0.74; // matches .peg::before height
+    const gap = numDisks > 6 ? 2 : 3;
+    const rawH = (poleH / numDisks) - gap;
+    const diskH = Math.max(9, Math.min(24, rawH));
+    board.style.setProperty('--disk-h', diskH + 'px');
+    board.style.setProperty('--disk-gap', gap + 'px');
+  }
+
+  function render(){
+    sizeDisksToStack();
+    board.innerHTML = '';
+    const labels = 'ABCDEFGH'.split('');
+    pegs.forEach((stack, idx)=>{
+      const pegEl = document.createElement('div');
+      pegEl.className = 'peg' + (selected===idx ? ' selected':'');
+      pegEl.dataset.idx = idx;
+      const label = document.createElement('div');
+      label.className='peg-label';
+      label.textContent = labels[idx];
+      pegEl.appendChild(label);
+      // stack[0] is the bottom of the peg, stack[last] is the top.
+      // Append top-to-bottom so the largest disk is the last DOM child,
+      // landing at the bottom of the column (justify-content: flex-end).
+      for(let i=stack.length-1; i>=0; i--){
+        const size = stack[i];
+        const d = document.createElement('div');
+        d.className='disk';
+        const widthPct = 24 + (size/numDisks)*70;
+        d.style.width = widthPct+'%';
+        d.style.background = diskColors[(size-1)%diskColors.length];
+        d.textContent = size;
+        pegEl.appendChild(d);
+      }
+      pegEl.addEventListener('click', ()=>handlePeg(idx));
+      board.appendChild(pegEl);
+    });
+  }
+
+  function handlePeg(idx){
+    if(selected===null){
+      if(pegs[idx].length===0) return;
+      selected = idx;
+      render();
+      return;
+    }
+    if(selected===idx){
+      selected = null;
+      render();
+      return;
+    }
+    const from = pegs[selected];
+    const to = pegs[idx];
+    const moving = from[from.length-1];
+    if(to.length===0 || to[to.length-1] > moving){
+      to.push(from.pop());
+      moves++;
+      moveCountEl.textContent = moves;
+      selected = null;
+      render();
+      checkWin();
+    } else {
+      selected = idx;
+      render();
+    }
+  }
+
+  function checkWin(){
+    const lastPeg = pegs.length - 1;
+    if(pegs[lastPeg].length===numDisks){
+      winText.textContent = 'Solved in '+moves+' moves with '+pegs.length+' pegs.';
+      setTimeout(()=>winScreen.classList.add('show'), 250);
+    }
+  }
+
+  window.addEventListener('resize', sizeDisksToStack);
+  diskCountSel.addEventListener('change', init);
+  document.getElementById('resetBtn').addEventListener('click', init);
+  document.getElementById('playAgain').addEventListener('click', init);
+
+  document.getElementById('nextLevelBtn').addEventListener('click', ()=>{
+    const maxN = parseInt(diskCountSel.options[diskCountSel.options.length-1].value, 10);
+    if(numDisks < maxN){
+      numDisks++;
+      diskCountSel.value = numDisks;
+      init();
+    } else {
+      winText.textContent = 'You beat the hardest level ('+numDisks+' pegs)! Try Play again or Exit.';
+    }
+  });
+
+  document.getElementById('exitBtn').addEventListener('click', ()=>{
+    window.close();
+    setTimeout(()=>{
+      window.location.href = 'about:blank';
+    }, 150);
+  });
+
+  init();
+})();
+</script>
+</body>
+</html>
